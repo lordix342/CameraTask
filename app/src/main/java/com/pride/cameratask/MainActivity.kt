@@ -28,7 +28,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val cameraExecutor = Executors.newSingleThreadExecutor()
-
         setContent {
             if (shouldShowCamera.value) {
                 CameraView(
