@@ -1,6 +1,7 @@
 package com.pride.cameratask
 
 import android.content.Context
+import android.hardware.camera2.CameraManager
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
@@ -19,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.content.getSystemService
 import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -28,26 +30,30 @@ fun CameraView(
     executor: Executor,
     onError: (ImageCaptureException) -> Unit
 ) {
-    val lensFacing = CameraSelector.LENS_FACING_BACK
     val context = LocalContext.current
+    val system = context.getSystemService<CameraManager>()
+    val lensFacing = remember { mutableStateOf(CameraSelector.LENS_FACING_FRONT) }
+    val listCamera = system?.cameraIdList
+    val idCamera = remember { mutableStateOf(0)}
+
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val preview = Preview.Builder().build()
     val previewView = remember { PreviewView(context) }
-    val zoom = remember { mutableStateOf(0.5f) }
+    val zoom = remember { mutableStateOf(0) }
     val cameraSelector = CameraSelector.Builder()
-        .requireLensFacing(lensFacing)
+        .requireLensFacing(lensFacing.value)
         .build()
 
-    LaunchedEffect(lensFacing,zoom.value) {
+
+    LaunchedEffect(lensFacing.value,zoom.value) {
         val cameraProvider = context.getCameraProvider()
         cameraProvider.unbindAll()
-        val camera = cameraProvider.bindToLifecycle(
+        cameraProvider.bindToLifecycle(
             lifecycleOwner,
             cameraSelector,
             preview
         )
-        camera.cameraControl.setLinearZoom(zoom.value)
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
 
@@ -55,8 +61,10 @@ fun CameraView(
         contentAlignment = Alignment.BottomCenter,
         modifier = Modifier
             .fillMaxSize()
-            .clickable { zoom.value = zoom.value + 0.1f
-            if(zoom.value >1.0f) zoom.value = 0.0f}) {
+            .clickable { idCamera.value = idCamera.value+1
+            if(idCamera.value >= (listCamera?.size)!!) idCamera.value = 0
+                lensFacing.value = listCamera[idCamera.value]?.toInt() ?: CameraSelector.LENS_FACING_BACK
+            }) {
         AndroidView({ previewView }, modifier = Modifier.fillMaxSize())
     }
 }
